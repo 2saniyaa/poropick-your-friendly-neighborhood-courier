@@ -1,3 +1,15 @@
+# Environment (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Dependencies & build output
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+
 # Logs
 logs
 *.log
@@ -6,11 +18,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
 
 # Editor directories and files
 .vscode/*

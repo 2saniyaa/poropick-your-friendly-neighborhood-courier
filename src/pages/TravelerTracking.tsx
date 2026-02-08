@@ -62,7 +62,7 @@ const TravelerTracking = () => {
           description: "Please log in to view your parcels.",
           variant: "destructive",
         });
-        navigate("/login");
+        navigate("/login", { replace: true });
         return;
       }
       setUser(session.user);
@@ -73,7 +73,7 @@ const TravelerTracking = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
-        navigate("/login");
+        navigate("/login", { replace: true });
       } else {
         setUser(session.user);
         fetchMyParcels(session.user?.email || "");

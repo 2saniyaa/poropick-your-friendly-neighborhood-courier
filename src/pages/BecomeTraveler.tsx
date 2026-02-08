@@ -43,12 +43,12 @@ const BecomeTraveler = () => {
           description: "Please log in to access this page.",
           variant: "destructive",
         });
-        navigate("/login");
+        navigate("/login", { replace: true });
         return;
       }
       if (session.user) {
-        setUser(session.user);
-        fetchTrips();
+      setUser(session.user);
+      fetchTrips();
       }
     };
 
@@ -56,11 +56,11 @@ const BecomeTraveler = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
-        navigate("/login");
+        navigate("/login", { replace: true });
       } else {
         if (session.user) {
-          setUser(session.user);
-          fetchTrips();
+        setUser(session.user);
+        fetchTrips();
         }
       }
     });
@@ -98,14 +98,14 @@ const BecomeTraveler = () => {
     try {
       // Get all trips
       const { data: tripsData, error: tripsError } = await supabase
-        .from("trips")
-        .select("*")
-        .order("created_at", { ascending: false });
+      .from("trips")
+      .select("*")
+      .order("created_at", { ascending: false });
 
       if (tripsError) {
         console.error("Error fetching trips:", tripsError);
-        return;
-      }
+      return;
+    }
 
       // Get all parcels to find booked trips
       const { data: allParcels, error: parcelsError } = await supabase
@@ -124,22 +124,22 @@ const BecomeTraveler = () => {
       const availableTrips = (tripsData || []).filter((trip: any) => !bookedTripIds.has(trip.id));
 
       // Fetch profiles for each available trip
-      const tripsWithProfiles = await Promise.all(
+    const tripsWithProfiles = await Promise.all(
         availableTrips.map(async (trip) => {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("first_name, last_name")
-            .eq("user_id", trip.user_id)
-            .single();
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("user_id", trip.user_id)
+          .single();
 
-          return {
-            ...trip,
-            profiles: profileData || null,
-          };
-        })
-      );
+        return {
+          ...trip,
+          profiles: profileData || null,
+        };
+      })
+    );
 
-      setTrips(tripsWithProfiles as Trip[]);
+    setTrips(tripsWithProfiles as Trip[]);
     } catch (error) {
       console.error("Error in fetchTrips:", error);
     }
@@ -159,7 +159,7 @@ const BecomeTraveler = () => {
         variant: "destructive",
       });
       setIsLoading(false);
-      navigate("/login");
+      navigate("/login", { replace: true });
       return;
     }
 
@@ -360,13 +360,13 @@ const BecomeTraveler = () => {
 
                         {/* Actions */}
                         <div className="flex flex-col items-end gap-3">
-                          <MatchButton
-                            tripId={trip.id}
-                            travelerId={trip.user_id}
+                            <MatchButton
+                              tripId={trip.id}
+                              travelerId={trip.user_id}
                             currentUserId={user.uid || user.id}
                             tripFrom={trip.from}
                             tripTo={trip.to}
-                          />
+                            />
                         </div>
                       </div>
                     </Card>

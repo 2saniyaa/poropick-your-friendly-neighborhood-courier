@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,27 +12,32 @@ import { supabase } from "@/integrations/firebase";
 const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Only redirect when we're actually on the login page (avoids duplicate navigations)
+    if (location.pathname !== "/login") return;
+
+    const redirectIfLoggedIn = () => {
+      if (hasRedirected.current) return;
+      hasRedirected.current = true;
+      navigate("/", { replace: true });
+    };
+
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/");
-      }
+      if (session) redirectIfLoggedIn();
     };
     checkUser();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/");
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session && location.pathname === "/login") redirectIfLoggedIn();
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -60,13 +65,13 @@ const Login = () => {
         toast({
           title: "Email not verified",
           description: "Please verify your email address. Check your inbox for the verification email.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
-        });
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Welcome back!",
+        description: "You've successfully logged in.",
+      });
       }
     }
     
@@ -85,24 +90,24 @@ const Login = () => {
 
     try {
       const { error, data } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-          }
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: {
+          first_name: firstName,
+          last_name: lastName,
         }
-      });
+      }
+    });
 
-      if (error) {
-        toast({
-          title: "Signup failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
+    if (error) {
+      toast({
+        title: "Signup failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
         // Check if verification email was sent
         const user = data?.user;
         if (user) {

@@ -41,15 +41,15 @@ const MatchButton = ({
     });
   };
 
-  return (
-    <Button
+    return (
+      <Button
       onClick={handleBookTrip}
-      className="btn-hero"
-    >
+        className="btn-hero"
+      >
       <Package className="w-4 h-4 mr-2" />
       Book This Trip
-    </Button>
-  );
+      </Button>
+    );
 };
 
 export default MatchButton;

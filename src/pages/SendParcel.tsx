@@ -122,7 +122,6 @@ const SendParcel = () => {
   }, [location.state, toast]);
 
   useEffect(() => {
-    // Check if user is logged in
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -131,7 +130,7 @@ const SendParcel = () => {
           description: "Please log in to send a parcel.",
           variant: "destructive",
         });
-        navigate("/login");
+        navigate("/login", { replace: true });
       } else {
         setUser(session.user);
       }
@@ -139,10 +138,9 @@ const SendParcel = () => {
 
     checkUser();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
-        navigate("/login");
+        navigate("/login", { replace: true });
       } else {
         setUser(session.user);
       }
@@ -258,7 +256,7 @@ const SendParcel = () => {
         description: "Please log in to send a parcel.",
         variant: "destructive",
       });
-      navigate("/login");
+      navigate("/login", { replace: true });
       return;
     }
 
@@ -297,8 +295,8 @@ const SendParcel = () => {
       // Generate tracking URL
       const trackingUrl = `${window.location.origin}/track/${trackingId}`;
 
-      toast({
-        title: "Parcel Request Submitted!",
+    toast({
+      title: "Parcel Request Submitted!",
         description: `Your parcel has been booked. Tracking Code: ${trackingId}. Share this link with the receiver: ${trackingUrl}`,
         duration: 10000, // Show for 10 seconds
       });
@@ -325,7 +323,7 @@ const SendParcel = () => {
         title: "Error submitting parcel",
         description: error.message,
         variant: "destructive",
-      });
+    });
     }
   };
 

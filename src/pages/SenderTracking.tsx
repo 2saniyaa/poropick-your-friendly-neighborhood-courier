@@ -64,7 +64,7 @@ const SenderTracking = () => {
           description: "Please log in to track your parcels.",
           variant: "destructive",
         });
-        navigate("/login");
+        navigate("/login", { replace: true });
         return;
       }
       setUser(session.user);
@@ -75,7 +75,7 @@ const SenderTracking = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
-        navigate("/login");
+        navigate("/login", { replace: true });
       } else {
         setUser(session.user);
         fetchMyParcels(session.user?.uid || session.user?.id);

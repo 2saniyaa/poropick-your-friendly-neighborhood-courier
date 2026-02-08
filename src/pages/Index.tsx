@@ -1,13 +1,10 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Package, Users, Shield, TrendingUp, Heart, Leaf, Search } from "lucide-react";
+import { ArrowRight, Package, Users, Shield, TrendingUp, Heart, Leaf, Search, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import heroImage from "@/assets/hero-delivery.png";
-import step1 from "@/assets/step1-post.png";
-import step2 from "@/assets/step2-connect.png";
-import step3 from "@/assets/step3-deliver.png";
 
 const Index = () => {
   return (
@@ -69,8 +66,8 @@ const Index = () => {
           
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <Card className="p-8 text-center card-hover">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-secondary flex items-center justify-center">
-                <img src={step1} alt="Post item" className="w-16 h-16" />
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+                <Package className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-xl font-semibold mb-3">Post your item</h3>
               <p className="text-muted-foreground">
@@ -79,8 +76,8 @@ const Index = () => {
             </Card>
 
             <Card className="p-8 text-center card-hover">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-secondary flex items-center justify-center">
-                <img src={step2} alt="Choose traveler" className="w-16 h-16" />
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+                <Users className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-xl font-semibold mb-3">Choose your traveler</h3>
               <p className="text-muted-foreground">
@@ -89,8 +86,8 @@ const Index = () => {
             </Card>
 
             <Card className="p-8 text-center card-hover">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-secondary flex items-center justify-center">
-                <img src={step3} alt="Track delivery" className="w-16 h-16" />
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+                <MapPin className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-xl font-semibold mb-3">Track and receive</h3>
               <p className="text-muted-foreground">

@@ -97,9 +97,9 @@ const Navigation = () => {
                 </DropdownMenu>
               </>
             ) : (
-              <Link to="/login">
-                <Button variant="outline">Login</Button>
-              </Link>
+                <Link to="/login">
+                  <Button variant="outline">Login</Button>
+                </Link>
             )}
           </div>
 
@@ -153,11 +153,11 @@ const Navigation = () => {
                   </Button>
                 </>
               ) : (
-                <Link to="/login" onClick={() => setIsOpen(false)}>
-                  <Button variant="outline" className="w-full">
-                    Login
-                  </Button>
-                </Link>
+                  <Link to="/login" onClick={() => setIsOpen(false)}>
+                    <Button variant="outline" className="w-full">
+                      Login
+                    </Button>
+                  </Link>
               )}
             </div>
           </div>
