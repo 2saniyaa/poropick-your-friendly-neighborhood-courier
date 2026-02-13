@@ -59,19 +59,18 @@ const Login = () => {
         variant: "destructive",
       });
     } else {
-      // Check if email is verified
       const user = result.data?.user;
       if (user && user.emailVerified === false) {
         toast({
           title: "Email not verified",
           description: "Please verify your email address. Check your inbox for the verification email.",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You've successfully logged in.",
-      });
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully logged in.",
+        });
       }
     }
     
@@ -108,7 +107,6 @@ const Login = () => {
         variant: "destructive",
       });
     } else {
-        // Check if verification email was sent
         const user = data?.user;
         if (user) {
           toast({
@@ -116,7 +114,6 @@ const Login = () => {
             description: "A verification email has been sent to your email address. Please check your inbox and verify your email before logging in.",
             variant: "default",
           });
-          // Reset the form
           (e.target as HTMLFormElement).reset();
         } else {
           toast({
@@ -125,7 +122,7 @@ const Login = () => {
             variant: "destructive",
           });
         }
-      }
+    }
     } catch (err: any) {
       console.error('Signup error:', err);
       toast({

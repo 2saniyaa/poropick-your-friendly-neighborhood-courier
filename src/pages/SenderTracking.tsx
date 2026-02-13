@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Navigation from "@/components/Navigation";
+import Layout from "@/components/Layout";
 import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/firebase";
 import { Button } from "@/components/ui/button";
@@ -177,9 +177,7 @@ const SenderTracking = () => {
   }
 
   return (
-    <div className="min-h-screen">
-      <Navigation />
-
+    <Layout>
       <div className="container mx-auto px-4 py-20">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
@@ -371,7 +369,7 @@ const SenderTracking = () => {
       </div>
 
       <Footer />
-    </div>
+    </Layout>
   );
 };
 

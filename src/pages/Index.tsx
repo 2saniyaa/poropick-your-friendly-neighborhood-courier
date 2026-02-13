@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Package, Users, Shield, TrendingUp, Heart, Leaf, Search, MapPin } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Button from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
