@@ -207,9 +207,10 @@ import {
             const results = await Promise.all(
               data.map((item) => {
                 const { id, ...itemData } = item;
-                // Convert ISO strings to Firestore timestamps if needed
+                // Convert ISO strings to Firestore timestamps if needed; skip undefined (Firestore rejects it)
                 const firestoreData: any = {};
                 for (const [key, value] of Object.entries(itemData)) {
+                  if (value === undefined) continue;
                   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
                     // Try to parse as date
                     const date = new Date(value);

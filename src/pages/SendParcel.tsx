@@ -20,6 +20,7 @@ import { Package, MapPin, Calendar, DollarSign, Search } from "lucide-react";
 
 interface Trip {
   id: string;
+  user_id?: string;
   name: string;
   email: string;
   from: string;
@@ -292,14 +293,40 @@ const SendParcel = () => {
         throw error;
       }
 
+      // Notify the traveler who posted the trip that someone matched with them
+      const state = location.state as { preSelectedTrip?: { id: string; from?: string; to?: string; user_id?: string } } | null;
+      const recipientUserId = state?.preSelectedTrip?.user_id ?? availableTrips.find((t: any) => t.id === selectedTripId)?.user_id;
+      const tripFrom = state?.preSelectedTrip?.from ?? availableTrips.find((t: any) => t.id === selectedTripId)?.from ?? formData.from;
+      const tripTo = state?.preSelectedTrip?.to ?? availableTrips.find((t: any) => t.id === selectedTripId)?.to ?? formData.to;
+
+      if (recipientUserId) {
+        try {
+          const notifPayload = {
+            recipient_user_id: String(recipientUserId),
+            type: "trip_matched",
+            trip_id: String(selectedTripId),
+            trip_from: String(tripFrom ?? ""),
+            trip_to: String(tripTo ?? ""),
+            sender_name: String(formData.senderName ?? ""),
+            tracking_id: String(trackingId),
+            read: false,
+          };
+          const { error: notifError } = await supabase.from("notifications").insert([notifPayload]);
+          if (notifError) {
+            console.warn("Could not create match notification:", notifError?.message ?? notifError);
+          }
+        } catch (notifErr: any) {
+          console.warn("Could not create match notification:", notifErr?.message ?? String(notifErr));
+        }
+      }
+
       // Generate tracking URL
       const trackingUrl = `${window.location.origin}/track/${trackingId}`;
 
     toast({
       title: "Parcel Request Submitted!",
-        description: `Your parcel has been booked. Tracking Code: ${trackingId}. Share this link with the receiver: ${trackingUrl}`,
-        duration: 10000, // Show for 10 seconds
-      });
+      description: `Your parcel has been booked. Tracking Code: ${trackingId}. Share this link with the receiver: ${trackingUrl}`,
+    });
 
       // Reset form and navigate
       setFormData({

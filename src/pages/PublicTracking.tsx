@@ -9,13 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Package, MapPin, Calendar, User, Phone, Navigation as NavIcon, ExternalLink, Search, Copy } from "lucide-react";
+import { Package, MapPin, Calendar, User, Phone, Search, Copy } from "lucide-react";
 import {
   formatParcelStatus,
   getStatusColor,
   getStatusIcon,
-  formatLocationSimple,
-  getGoogleMapsUrl,
   type ParcelStatus,
 } from "@/lib/trackingHelpers";
 
@@ -88,18 +86,23 @@ const PublicTracking = () => {
 
     setIsLoading(true);
     try {
-      // Query parcels by tracking_id
+      const normalizedCode = code.trim().toUpperCase();
+      // Query parcels by tracking_id (exact match - stored as uppercase)
       const { data: parcelsData, error } = await supabase
         .from("parcels")
         .select("*")
-        .eq("tracking_id", code.toUpperCase());
+        .eq("tracking_id", normalizedCode);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error querying parcels by tracking_id:", error);
+        throw error;
+      }
 
       if (!parcelsData || parcelsData.length === 0) {
+        console.warn("No parcel found for tracking_id:", normalizedCode);
         toast({
           title: "Parcel not found",
-          description: "No parcel found with this tracking code. Please check the code and try again.",
+          description: `No parcel found with tracking code: ${normalizedCode}. Please check the code and try again.`,
           variant: "destructive",
         });
         setParcel(null);
@@ -337,28 +340,6 @@ const PublicTracking = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* Location Information */}
-                {parcel.location && (
-                  <div className="border-t pt-6 space-y-4">
-                    <h4 className="font-semibold text-lg">Last Known Location</h4>
-                    <div className="flex items-center gap-2">
-                      <NavIcon className="w-4 h-4 text-primary" />
-                      <span className="text-muted-foreground">{formatLocationSimple(parcel.location)}</span>
-                      {getGoogleMapsUrl(parcel.location) && (
-                        <a
-                          href={getGoogleMapsUrl(parcel.location)!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline flex items-center gap-1"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          View on Map
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* Timestamps */}
                 <div className="border-t pt-6 space-y-2 text-sm text-muted-foreground">

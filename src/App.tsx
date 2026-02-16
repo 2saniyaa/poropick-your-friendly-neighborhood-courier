@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ToastProvider } from "@/hooks/use-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import MatchNotificationListener from "@/components/MatchNotificationListener";
 
 // Lazy-load pages so only the current route is in the initial bundle
 const Index = lazy(() => import("./pages/Index"));
@@ -41,6 +42,7 @@ const App = () => (
           v7_relativeSplatPath: true,
         }}
       >
+        <MatchNotificationListener />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Index />} />

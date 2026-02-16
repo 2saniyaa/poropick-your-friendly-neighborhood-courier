@@ -27,13 +27,14 @@ const MatchButton = ({
   }
 
   const handleBookTrip = () => {
-    // Redirect to SendParcel page with trip pre-selected
+    // Redirect to SendParcel page with trip pre-selected (include travelerId so they can be notified)
     navigate("/send-parcel", {
       state: {
         preSelectedTrip: {
           id: tripId,
           from: tripFrom,
           to: tripTo,
+          user_id: travelerId,
         },
         preFillFrom: tripFrom,
         preFillTo: tripTo,

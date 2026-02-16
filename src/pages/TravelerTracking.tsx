@@ -7,14 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Package, MapPin, Calendar, User, Phone, Navigation as NavIcon } from "lucide-react";
+import { Package, MapPin, Calendar, User, Phone, Bell } from "lucide-react";
 import {
   updateParcelStatus,
   formatParcelStatus,
   getStatusColor,
   getStatusIcon,
-  formatLocationSimple,
-  getGoogleMapsUrl,
   PARCEL_STATUS,
   type ParcelStatus,
 } from "@/lib/trackingHelpers";
@@ -52,6 +50,42 @@ const TravelerTracking = () => {
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [matchNotifications, setMatchNotifications] = useState<
+    { id: string; trip_from: string; trip_to: string; sender_name: string; created_at: string; read: boolean }[]
+  >([]);
+
+  const fetchMatchNotifications = async (userId: string) => {
+    try {
+      // Query only by recipient to avoid Firestore composite index; filter and sort in memory
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("recipient_user_id", userId);
+      if (error) {
+        setMatchNotifications([]);
+        return;
+      }
+      const list = (data || [])
+        .filter((n: any) => n.type === "trip_matched")
+        .sort((a: any, b: any) => {
+          const ta = new Date(a.created_at).getTime();
+          const tb = new Date(b.created_at).getTime();
+          return tb - ta;
+        })
+        .slice(0, 10)
+        .map((n: any) => ({
+          id: n.id,
+          trip_from: n.trip_from || "",
+          trip_to: n.trip_to || "",
+          sender_name: n.sender_name || "A sender",
+          created_at: n.created_at,
+          read: n.read === true,
+        }));
+      setMatchNotifications(list);
+    } catch {
+      setMatchNotifications([]);
+    }
+  };
 
   useEffect(() => {
     const checkUser = async () => {
@@ -66,6 +100,8 @@ const TravelerTracking = () => {
         return;
       }
       setUser(session.user);
+      const uid = session.user?.uid || (session.user as any)?.id;
+      if (uid) fetchMatchNotifications(uid);
       fetchMyParcels(session.user.email || "");
     };
 
@@ -76,6 +112,8 @@ const TravelerTracking = () => {
         navigate("/login", { replace: true });
       } else {
         setUser(session.user);
+        const uid = session.user?.uid || (session.user as any)?.id;
+        if (uid) fetchMatchNotifications(uid);
         fetchMyParcels(session.user?.email || "");
       }
     });
@@ -177,7 +215,7 @@ const TravelerTracking = () => {
 
   const handleStatusUpdate = async (parcelId: string, newStatus: ParcelStatus) => {
     try {
-      const result = await updateParcelStatus(supabase, parcelId, newStatus, true);
+      const result = await updateParcelStatus(supabase, parcelId, newStatus, false);
 
       if (result.success) {
         toast({
@@ -222,6 +260,42 @@ const TravelerTracking = () => {
               Manage and track parcels for your trips
             </p>
           </div>
+
+          {((matchNotifications.length > 0) || (parcels.length > 0 && !isLoading)) && (
+            <div className="space-y-3 mb-6">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Bell className="w-5 h-5 text-primary" />
+                Someone matched with your trip
+              </h2>
+              {matchNotifications.length > 0 ? (
+                matchNotifications.map((n) => (
+                  <Card key={n.id} className="p-4 bg-primary/5 border-primary/20">
+                    <p className="text-sm font-medium">
+                      <span className="text-primary">{n.sender_name}</span> matched with your trip{" "}
+                      <span className="font-semibold">{n.trip_from} → {n.trip_to}</span>.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      You can manage the parcel in the list below.
+                    </p>
+                  </Card>
+                ))
+              ) : (
+                parcels.map((parcel) => (
+                  <Card key={parcel.id} className="p-4 bg-primary/5 border-primary/20">
+                    <p className="text-sm font-medium">
+                      <span className="text-primary">{parcel.sender_name}</span> matched with your trip{" "}
+                      <span className="font-semibold">
+                        {parcel.trip?.from ?? "—"} → {parcel.trip?.to ?? "—"}
+                      </span>.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      You can manage the parcel in the list below.
+                    </p>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
 
           {isLoading ? (
             <Card className="p-8 text-center">
@@ -316,25 +390,6 @@ const TravelerTracking = () => {
                           </p>
                         )}
                       </div>
-
-                      {parcel.location && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <NavIcon className="w-4 h-4 text-primary" />
-                          <span className="text-muted-foreground">
-                            Last location: {formatLocationSimple(parcel.location)}
-                          </span>
-                          {getGoogleMapsUrl(parcel.location) && (
-                            <a
-                              href={getGoogleMapsUrl(parcel.location)!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              View on Map
-                            </a>
-                          )}
-                        </div>
-                      )}
 
                       {parcel.updated_at && (
                         <p className="text-xs text-muted-foreground">

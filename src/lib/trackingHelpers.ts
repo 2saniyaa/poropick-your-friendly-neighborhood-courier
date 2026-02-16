@@ -42,7 +42,7 @@ export const updateParcelStatus = async (
   supabase: any,
   parcelId: string,
   newStatus: ParcelStatus,
-  includeLocation: boolean = true
+  includeLocation: boolean = false
 ): Promise<{ success: boolean; location?: any; error?: any }> => {
   try {
     let location = null;

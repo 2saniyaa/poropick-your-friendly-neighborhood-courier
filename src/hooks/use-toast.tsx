@@ -54,7 +54,7 @@ export function genId() {
 
 export type ToastContextValue = {
   toasts: ToastProps[];
-  toast: (props: Omit<ToastProps, "id">) => void;
+  toast: (props: Omit<ToastProps, "id"> & { id?: string }) => string;
   dismiss: (id: string) => void;
 };
 
@@ -70,8 +70,10 @@ export function useToast(): ToastContextValue {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = React.useReducer(toastReducer, { toasts: [] });
-  const toast = React.useCallback((props: Omit<ToastProps, "id">) => {
-    dispatch({ type: "ADD", toast: { ...props, id: genId() } });
+  const toast = React.useCallback((props: Omit<ToastProps, "id"> & { id?: string }): string => {
+    const id = props.id ?? genId();
+    dispatch({ type: "ADD", toast: { ...props, id } });
+    return id;
   }, []);
   const dismiss = React.useCallback((id: string) => {
     dispatch({ type: "DISMISS", id });

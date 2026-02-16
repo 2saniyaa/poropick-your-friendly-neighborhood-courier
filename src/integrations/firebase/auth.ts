@@ -4,9 +4,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  sendEmailVerification,
   User,
-  AuthError,
 } from 'firebase/auth';
 import { auth } from './client';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -92,20 +90,6 @@ export const firebaseAuth = {
         credentials.password
       );
 
-      // Send email verification
-      try {
-        const actionCodeSettings = {
-          url: credentials.options?.emailRedirectTo || `${window.location.origin}/`,
-          handleCodeInApp: false, // Set to false to open link in browser
-        };
-        await sendEmailVerification(userCredential.user, actionCodeSettings);
-        console.log('Verification email sent successfully to:', userCredential.user.email);
-      } catch (verificationError: any) {
-        console.error('Error sending verification email:', verificationError);
-        // Continue with signup even if verification email fails
-        // The error will be logged but won't block account creation
-      }
-
       // Create user profile in Firestore
       if (credentials.options?.data) {
         await setDoc(doc(db, 'profiles', userCredential.user.uid), {
@@ -172,41 +156,5 @@ export const firebaseAuth = {
     };
   },
 
-  // Resend verification email
-  resendVerificationEmail: async (emailRedirectTo?: string) => {
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        return {
-          error: {
-            message: 'No user is currently signed in',
-            status: 'auth/no-user',
-          },
-        };
-      }
-
-      if (user.emailVerified) {
-        return {
-          error: {
-            message: 'Email is already verified',
-            status: 'auth/email-already-verified',
-          },
-        };
-      }
-
-      await sendEmailVerification(user, {
-        url: emailRedirectTo || `${window.location.origin}/`,
-      });
-
-      return { error: null };
-    } catch (error: any) {
-      return {
-        error: {
-          message: error.message || 'Failed to send verification email',
-          status: error.code,
-        },
-      };
-    }
-  },
 };
 

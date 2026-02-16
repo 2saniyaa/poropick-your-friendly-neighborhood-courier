@@ -59,19 +59,10 @@ const Login = () => {
         variant: "destructive",
       });
     } else {
-      const user = result.data?.user;
-      if (user && user.emailVerified === false) {
-        toast({
-          title: "Email not verified",
-          description: "Please verify your email address. Check your inbox for the verification email.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
-        });
-      }
+      toast({
+        title: "Welcome back!",
+        description: "You've successfully logged in.",
+      });
     }
     
     setIsLoading(false);
@@ -111,7 +102,7 @@ const Login = () => {
         if (user) {
           toast({
             title: "Account created!",
-            description: "A verification email has been sent to your email address. Please check your inbox and verify your email before logging in.",
+            description: "You can log in now with your email and password.",
             variant: "default",
           });
           (e.target as HTMLFormElement).reset();

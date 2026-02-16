@@ -1,15 +1,158 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Package, Users, Shield, TrendingUp, Heart, Leaf, Search, MapPin } from "lucide-react";
 import Button from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import heroImage from "@/assets/hero-delivery.png";
+import { supabase } from "@/integrations/firebase";
+
+const DELIVERY_POPUP_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+const RECENT_NOTIFICATION_WINDOW_MS = 10 * 60 * 1000; // show popup for notifications from last 10 mins
 
 const Index = () => {
+  const navigate = useNavigate();
+  const [deliveryPopup, setDeliveryPopup] = useState<{
+    open: boolean;
+    trip_from: string;
+    trip_to: string;
+    sender_name: string;
+  } | null>(null);
+  const popupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedAtRef = useRef<number>(0);
+  const shownNotificationIdsRef = useRef<Set<string>>(new Set());
+
+  const showPopupForNotification = (n: { id?: string; trip_from?: string; trip_to?: string; sender_name?: string }) => {
+    const id = n.id ?? "";
+    if (id && shownNotificationIdsRef.current.has(id)) return;
+    if (id) shownNotificationIdsRef.current.add(id);
+    setDeliveryPopup({
+      open: true,
+      trip_from: n.trip_from ?? "",
+      trip_to: n.trip_to ?? "",
+      sender_name: n.sender_name ?? "A sender",
+    });
+  };
+
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setup = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const uid = session?.user?.uid ?? (session?.user as { id?: string })?.id;
+      if (!uid) return;
+
+      mountedAtRef.current = Date.now();
+
+      // On load: show popup if there's a recent "trip_matched" notification (e.g. user just signed back in)
+      try {
+        const { data: list } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("recipient_user_id", uid);
+        const recent = (list || [])
+          .filter((n: any) => n.type === "trip_matched")
+          .filter((n: any) => {
+            const created = n.created_at ? new Date(n.created_at).getTime() : 0;
+            return Date.now() - created <= RECENT_NOTIFICATION_WINDOW_MS;
+          })
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        if (recent.length > 0) {
+          showPopupForNotification(recent[0]);
+        }
+      } catch {
+        // ignore
+      }
+
+      channel = supabase.channel(`home-delivery-popup-${uid}`);
+      channel.on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          table: "notifications",
+          filter: `recipient_user_id=eq.${uid}`,
+        },
+        (payload: { new?: { id?: string; type?: string; trip_from?: string; trip_to?: string; sender_name?: string } }) => {
+          const data = payload?.new;
+          if (!data || data.type !== "trip_matched") return;
+          if (Date.now() - mountedAtRef.current < 2500) return;
+
+          showPopupForNotification(data);
+        }
+      );
+      (channel as { subscribe?: () => void }).subscribe?.();
+    };
+
+    setup();
+    return () => {
+      if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!deliveryPopup?.open) return;
+    popupTimerRef.current = setTimeout(() => {
+      setDeliveryPopup((prev) => (prev ? { ...prev, open: false } : null));
+      popupTimerRef.current = null;
+    }, DELIVERY_POPUP_DURATION_MS);
+    return () => {
+      if (popupTimerRef.current) {
+        clearTimeout(popupTimerRef.current);
+        popupTimerRef.current = null;
+      }
+    };
+  }, [deliveryPopup?.open]);
+
+  const closePopup = () => {
+    if (popupTimerRef.current) {
+      clearTimeout(popupTimerRef.current);
+      popupTimerRef.current = null;
+    }
+    setDeliveryPopup((prev) => (prev ? { ...prev, open: false } : null));
+  };
+
   return (
     <div className="min-h-screen">
       <Navigation />
+
+      {/* New delivery assigned popup - shown on Home for 10 minutes */}
+      {deliveryPopup && (
+        <Dialog open={deliveryPopup.open} onOpenChange={(open) => !open && closePopup()}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>New delivery assigned</DialogTitle>
+              <DialogDescription>
+                <span className="font-medium text-foreground">{deliveryPopup.sender_name}</span> matched with your
+                trip{" "}
+                <span className="font-semibold">
+                  {deliveryPopup.trip_from || "—"} → {deliveryPopup.trip_to || "—"}
+                </span>
+                . Check My Parcels to manage it.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button onClick={() => { closePopup(); navigate("/traveler-tracking"); }}>
+                View my parcels
+              </Button>
+              <Button variant="outline" onClick={closePopup}>
+                Dismiss
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Hero Section */}
       <section className="relative overflow-hidden gradient-hero">
@@ -71,7 +214,7 @@ const Index = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3">Post your item</h3>
               <p className="text-muted-foreground">
-                Upload a photo and describe what you need delivered. Set your budget and delivery timeline.
+                Upload a photo and describe what you need delivered. Set your delivery timeline.
               </p>
             </Card>
 
@@ -81,7 +224,7 @@ const Index = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3">Choose your traveler</h3>
               <p className="text-muted-foreground">
-                Review offers from verified travelers. Check their ratings and delivery history.
+                Review offers from verified travelers going to the same destination as you.
               </p>
             </Card>
 
@@ -111,9 +254,9 @@ const Index = () => {
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-accent/10 flex items-center justify-center">
                 <Package className="w-8 h-8 text-accent" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Find orders to deliver</h3>
+              <h3 className="text-xl font-semibold mb-3">Post your travels and find orders to deliver</h3>
               <p className="text-muted-foreground">
-                Search for orders based on where you're traveling.
+                Post and search for orders based on where you're traveling.
               </p>
             </Card>
 

@@ -7,13 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Package, MapPin, Calendar, User, Phone, Navigation as NavIcon, Copy, ExternalLink } from "lucide-react";
+import { Package, MapPin, Calendar, User, Phone, Copy } from "lucide-react";
 import {
   formatParcelStatus,
   getStatusColor,
   getStatusIcon,
-  formatLocationSimple,
-  getGoogleMapsUrl,
   getParcelTrackingUrl,
   type ParcelStatus,
 } from "@/lib/trackingHelpers";
@@ -316,30 +314,6 @@ const SenderTracking = () => {
                             </div>
                           </div>
                         </div>
-
-                        {/* Location & Tracking */}
-                        {parcel.location && (
-                          <div>
-                            <h4 className="font-semibold mb-2">Last Known Location</h4>
-                            <div className="flex items-center gap-2 text-sm">
-                              <NavIcon className="w-4 h-4 text-primary" />
-                              <span className="text-muted-foreground">
-                                {formatLocationSimple(parcel.location)}
-                              </span>
-                              {getGoogleMapsUrl(parcel.location) && (
-                                <a
-                                  href={getGoogleMapsUrl(parcel.location)!}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-primary hover:underline flex items-center gap-1"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  View on Map
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        )}
 
                         {/* Tracking Info */}
                         <div>
