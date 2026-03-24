@@ -215,7 +215,7 @@ const TravelerTracking = () => {
 
   const handleStatusUpdate = async (parcelId: string, newStatus: ParcelStatus) => {
     try {
-      const result = await updateParcelStatus(supabase, parcelId, newStatus, false);
+      const result = await updateParcelStatus(supabase, parcelId, newStatus);
 
       if (result.success) {
         toast({

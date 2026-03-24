@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Package, MapPin, Calendar, User, Phone, Search, Copy } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   formatParcelStatus,
   getStatusColor,
@@ -38,6 +39,7 @@ interface Parcel {
     date: string;
     time: string;
   };
+  traveler_photo_url?: string | null;
 }
 
 const PublicTracking = () => {
@@ -112,16 +114,28 @@ const PublicTracking = () => {
 
       const parcelData = parcelsData[0];
 
-      // Get trip information
+      // Get trip and traveler profile photo
       const { data: tripData } = await supabase
         .from("trips")
-        .select("name, email, from, to, date, time")
+        .select("name, email, from, to, date, time, user_id")
         .eq("id", parcelData.trip_id)
         .single();
+
+      let traveler_photo_url: string | null = null;
+      if (tripData?.user_id) {
+        try {
+          // Use direct Firestore document lookup (profile doc ID = user_id)
+          const { getProfilePhoto } = await import("@/integrations/firebase/storage-free");
+          traveler_photo_url = await getProfilePhoto(tripData.user_id);
+        } catch (err) {
+          console.warn("Could not fetch traveler photo:", err);
+        }
+      }
 
       setParcel({
         ...parcelData,
         trip: tripData || undefined,
+        traveler_photo_url,
       });
     } catch (error: any) {
       toast({
@@ -225,6 +239,30 @@ const PublicTracking = () => {
 
               {/* Status Card */}
               <Card className="p-6">
+                {/* Traveler photo for receiver to recognize carrier */}
+                {parcel.traveler_photo_url && (
+                  <div className="flex flex-col items-center mb-6 bg-muted/30 rounded-lg p-6">
+                    <p className="text-sm font-semibold text-muted-foreground mb-3">Your Carrier</p>
+                    <Avatar className="h-32 w-32 border-4 border-primary shadow-lg">
+                      <AvatarImage 
+                        src={parcel.traveler_photo_url} 
+                        alt="Your carrier" 
+                        className="object-cover"
+                        onError={(e) => {
+                          console.error("Failed to load traveler photo:", parcel.traveler_photo_url);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <AvatarFallback className="bg-primary/10 text-primary text-3xl">
+                        <User className="h-16 w-16" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <p className="text-center text-sm font-medium mt-3">
+                      {parcel.trip?.name || "Traveler"}
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <h3 className="text-2xl font-semibold mb-2">

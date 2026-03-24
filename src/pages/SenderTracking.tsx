@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Package, MapPin, Calendar, User, Phone, Copy } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   formatParcelStatus,
   getStatusColor,
@@ -42,7 +43,9 @@ interface Parcel {
     to: string;
     date: string;
     time: string;
+    user_id?: string;
   };
+  traveler_photo_url?: string | null;
 }
 
 const SenderTracking = () => {
@@ -66,7 +69,7 @@ const SenderTracking = () => {
         return;
       }
       setUser(session.user);
-      fetchMyParcels(session.user.uid || session.user.id);
+      fetchMyParcels(session.user.uid ?? (session.user as { id?: string }).id);
     };
 
     checkUser();
@@ -76,7 +79,7 @@ const SenderTracking = () => {
         navigate("/login", { replace: true });
       } else {
         setUser(session.user);
-        fetchMyParcels(session.user?.uid || session.user?.id);
+        fetchMyParcels(session.user?.uid ?? (session.user as { id?: string } | null)?.id);
       }
     });
 
@@ -133,18 +136,30 @@ const SenderTracking = () => {
         return bDate - aDate;
       });
 
-      // Get trip information for each parcel
+      // Get trip and traveler profile (photo) for each parcel
       const enrichedParcels = await Promise.all(
         sortedParcels.map(async (parcel: any) => {
           const { data: tripData } = await supabase
             .from("trips")
-            .select("name, email, from, to, date, time")
+            .select("name, email, from, to, date, time, user_id")
             .eq("id", parcel.trip_id)
             .single();
+
+          let traveler_photo_url: string | null = null;
+          if (tripData?.user_id) {
+            try {
+              // Use direct Firestore document lookup (profile doc ID = user_id)
+              const { getProfilePhoto } = await import("@/integrations/firebase/storage-free");
+              traveler_photo_url = await getProfilePhoto(tripData.user_id);
+            } catch (err) {
+              console.warn("Could not fetch traveler photo:", err);
+            }
+          }
 
           return {
             ...parcel,
             trip: tripData || undefined,
+            traveler_photo_url,
           };
         })
       );
@@ -204,6 +219,30 @@ const SenderTracking = () => {
               {parcels.map((parcel) => (
                 <Card key={parcel.id} className="p-6">
                   <div className="space-y-4">
+                    {/* Traveler photo (after assignment) */}
+                    {parcel.traveler_photo_url && (
+                      <div className="flex flex-col items-center py-4 bg-muted/30 rounded-lg mb-4">
+                        <p className="text-sm font-semibold text-muted-foreground mb-3">Your Carrier</p>
+                        <Avatar className="h-32 w-32 border-4 border-primary shadow-lg">
+                          <AvatarImage 
+                            src={parcel.traveler_photo_url} 
+                            alt="Your carrier" 
+                            className="object-cover"
+                            onError={(e) => {
+                              console.error("Failed to load traveler photo:", parcel.traveler_photo_url);
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <AvatarFallback className="bg-primary/10 text-primary text-3xl">
+                            <User className="h-16 w-16" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="text-center text-sm font-medium mt-3">
+                          {parcel.trip?.name || "Traveler"}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Header */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">

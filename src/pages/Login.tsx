@@ -60,8 +60,8 @@ const Login = () => {
       });
     } else {
       toast({
-        title: "Welcome back!",
-        description: "You've successfully logged in.",
+        title: "Login successful",
+        description: "You're signed in. You can send parcels or become a Poro-Pal.",
       });
     }
     

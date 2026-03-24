@@ -16,7 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Package, MapPin, Calendar, DollarSign, Search } from "lucide-react";
+import { Package, MapPin, Calendar, DollarSign, Search, User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Trip {
   id: string;
@@ -28,6 +29,8 @@ interface Trip {
   date: string;
   time: string;
   space: string;
+  capacity_kg?: number | null;
+  traveler_photo_url?: string | null;
   status: string;
 }
 
@@ -99,7 +102,26 @@ const SendParcel = () => {
             return fromMatch && toMatch && notBooked;
           });
 
-          setAvailableTrips(filtered);
+          // Fetch traveler photos for each trip
+          const tripsWithPhotos = await Promise.all(
+            filtered.map(async (trip: any) => {
+              let traveler_photo_url: string | null = null;
+              if (trip.user_id) {
+                try {
+                  const { getProfilePhoto } = await import("@/integrations/firebase/storage-free");
+                  traveler_photo_url = await getProfilePhoto(trip.user_id);
+                } catch (err) {
+                  console.warn("Could not fetch photo for trip:", trip.id, err);
+                }
+              }
+              return {
+                ...trip,
+                traveler_photo_url,
+              };
+            })
+          );
+
+          setAvailableTrips(tripsWithPhotos);
           
           // If the pre-selected trip is in the results, jump to step 4
           if (filtered.some((t: any) => t.id === trip.id)) {
@@ -192,7 +214,26 @@ const SendParcel = () => {
         return fromMatch && toMatch && notBooked;
       });
 
-      setAvailableTrips(filtered);
+      // Fetch traveler photos for each trip
+      const tripsWithPhotos = await Promise.all(
+        filtered.map(async (trip: any) => {
+          let traveler_photo_url: string | null = null;
+          if (trip.user_id) {
+            try {
+              const { getProfilePhoto } = await import("@/integrations/firebase/storage-free");
+              traveler_photo_url = await getProfilePhoto(trip.user_id);
+            } catch (err) {
+              console.warn("Could not fetch photo for trip:", trip.id, err);
+            }
+          }
+          return {
+            ...trip,
+            traveler_photo_url,
+          };
+        })
+      );
+
+      setAvailableTrips(tripsWithPhotos);
       
       if (filtered.length === 0) {
         toast({
@@ -581,20 +622,33 @@ const SendParcel = () => {
                             }`}
                           >
                             <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <MapPin className="w-4 h-4 text-primary" />
-                                  <span className="font-semibold">
-                                    {trip.from} → {trip.to}
-                                  </span>
-                                </div>
-                                <div className="text-sm text-muted-foreground space-y-1">
-                                  <div className="flex items-center gap-4 flex-wrap">
-                                    <span>Traveler: {trip.name}</span>
-                                    <span>Date: {trip.date ? new Date(trip.date).toLocaleDateString() : trip.date}</span>
-                                    {trip.time && <span>Time: {trip.time}</span>}
+                              <div className="flex items-start gap-3 flex-1">
+                                {/* Traveler Photo */}
+                                <Avatar className="h-12 w-12 border-2 border-primary/20 flex-shrink-0">
+                                  <AvatarImage src={trip.traveler_photo_url ?? undefined} alt={trip.name} />
+                                  <AvatarFallback className="bg-primary/10 text-primary">
+                                    <User className="w-6 h-6" />
+                                  </AvatarFallback>
+                                </Avatar>
+                                
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <MapPin className="w-4 h-4 text-primary" />
+                                    <span className="font-semibold">
+                                      {trip.from} → {trip.to}
+                                    </span>
                                   </div>
-                                  <div>Available Space: {trip.space}</div>
+                                  <div className="text-sm text-muted-foreground space-y-1">
+                                    <div className="flex items-center gap-4 flex-wrap">
+                                      <span>Traveler: {trip.name}</span>
+                                      <span>Date: {trip.date ? new Date(trip.date).toLocaleDateString() : trip.date}</span>
+                                      {trip.time && <span>Time: {trip.time}</span>}
+                                    </div>
+                                    <div>Available Space: {trip.space}</div>
+                                    {trip.capacity_kg != null && (
+                                      <div>Capacity: {trip.capacity_kg} kg</div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                               <div className="flex flex-col items-end gap-2">

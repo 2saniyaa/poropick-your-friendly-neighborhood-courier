@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import Footer from "@/components/Footer";
@@ -9,7 +9,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/firebase";
 import MatchButton from "@/components/MatchButton";
-import { MapPin, Calendar, Package, User } from "lucide-react";
+import { MapPin, Calendar, Package, User, Camera } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { uploadProfilePhoto, saveProfilePhotoUrl } from "@/integrations/firebase/storage";
+import { uploadAsBase64, saveProfilePhotoUrl as savePhotoUrl } from "@/integrations/firebase/storage-free";
 
 interface Trip {
   id: string;
@@ -20,6 +23,8 @@ interface Trip {
   date: string;
   time: string;
   space: string;
+  capacity_kg?: number | null;
+  traveler_photo_url?: string | null;
   profiles?: {
     first_name: string | null;
     last_name: string | null;
@@ -33,6 +38,9 @@ const BecomeTraveler = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -67,6 +75,79 @@ const BecomeTraveler = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate, toast]);
+
+  // Fetch current user's profile photo
+  useEffect(() => {
+    if (!user) return;
+    const uid = user.uid || user.id;
+    const loadProfile = async () => {
+      try {
+        // Use direct Firestore document lookup (profile doc ID = user_id)
+        const { getProfilePhoto } = await import("@/integrations/firebase/storage-free");
+        const photo = await getProfilePhoto(uid);
+        if (photo) {
+          setProfilePhotoUrl(photo);
+        }
+      } catch (err) {
+        console.warn("Could not load profile photo:", err);
+      }
+    };
+    loadProfile();
+  }, [user]);
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) {
+      if (!file) {
+        toast({ title: "No file selected", description: "Please choose an image file.", variant: "destructive" });
+      }
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please choose an image file.", variant: "destructive" });
+      return;
+    }
+    const uid = user.uid || (user as any).id;
+    if (!uid) {
+      toast({ title: "Authentication error", description: "User ID not found. Please log in again.", variant: "destructive" });
+      return;
+    }
+    
+    // Check file size (max 2MB for base64 storage, 5MB for Firebase Storage)
+    const maxSize = 2 * 1024 * 1024; // 2MB for base64 (Firestore limit)
+    if (file.size > maxSize) {
+      toast({ 
+        title: "File too large", 
+        description: "Please choose an image smaller than 2MB. It will be compressed automatically.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setPhotoUploading(true);
+    e.target.value = "";
+    try {
+      console.log("Starting photo upload (base64 - FREE) for user:", uid);
+      // Use FREE base64 storage (no CORS needed, no external service)
+      const base64DataUrl = await uploadAsBase64(uid, file);
+      console.log("Upload successful (base64)");
+      setProfilePhotoUrl(base64DataUrl); // base64 data URL can be used directly in <img src>
+      toast({ 
+        title: "Photo updated", 
+        description: "Your profile photo is now visible to senders after they book your trip. (Stored for free in Firestore)" 
+      });
+    } catch (err: any) {
+      console.error("Photo upload error:", err);
+      const errorMessage = err?.message || err?.code || "Could not upload photo. Please try a smaller image.";
+      toast({ 
+        title: "Upload failed", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   // Listen for parcel changes to refresh trips list
   useEffect(() => {
@@ -123,7 +204,7 @@ const BecomeTraveler = () => {
       // Filter out trips that have been booked
       const availableTrips = (tripsData || []).filter((trip: any) => !bookedTripIds.has(trip.id));
 
-      // Fetch profiles for each available trip
+      // Fetch profiles and photos for each available trip
     const tripsWithProfiles = await Promise.all(
         availableTrips.map(async (trip) => {
         const { data: profileData } = await supabase
@@ -132,9 +213,19 @@ const BecomeTraveler = () => {
           .eq("user_id", trip.user_id)
           .single();
 
+        // Fetch traveler photo
+        let traveler_photo_url: string | null = null;
+        try {
+          const { getProfilePhoto } = await import("@/integrations/firebase/storage-free");
+          traveler_photo_url = await getProfilePhoto(trip.user_id);
+        } catch (err) {
+          console.warn("Could not fetch photo for trip:", trip.id, err);
+        }
+
         return {
           ...trip,
           profiles: profileData || null,
+          traveler_photo_url,
         };
       })
     );
@@ -164,6 +255,7 @@ const BecomeTraveler = () => {
     }
 
     const formData = new FormData(e.currentTarget);
+    const capacityKg = formData.get("capacity_kg");
     const tripData = {
       user_id: userId,
       email: user?.email || "",
@@ -173,6 +265,7 @@ const BecomeTraveler = () => {
       date: formData.get("date") as string,
       time: formData.get("time") as string,
       space: formData.get("space") as string,
+      capacity_kg: capacityKg ? Number(capacityKg) : null,
       status: "pending",
     };
 
@@ -216,6 +309,40 @@ const BecomeTraveler = () => {
               Post your travel plans and earn money by delivering parcels
             </p>
           </div>
+
+          {/* Profile photo (shown to senders after they book your trip) */}
+          <Card className="p-8 mb-8">
+            <h2 className="text-2xl font-bold mb-4">Your profile photo</h2>
+            <p className="text-muted-foreground mb-6">
+              Senders and recipients will see this after they book your trip so they can recognize you.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={profilePhotoUrl ?? undefined} alt="Profile" />
+                <AvatarFallback className="text-3xl bg-primary/10 text-primary">
+                  <User className="h-12 w-12" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={photoUploading}
+                  onClick={() => photoInputRef.current?.click()}
+                >
+                  <Camera className="w-4 h-4 mr-2" />
+                  {photoUploading ? "Uploading..." : profilePhotoUrl ? "Change photo" : "Upload photo"}
+                </Button>
+              </div>
+            </div>
+          </Card>
 
           {/* Post Your Trip Form */}
           <Card className="p-8 mb-12">
@@ -289,6 +416,19 @@ const BecomeTraveler = () => {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="capacity_kg">Capacity (kg)</Label>
+                <Input
+                  id="capacity_kg"
+                  name="capacity_kg"
+                  type="number"
+                  min={1}
+                  max={100}
+                  placeholder="e.g., 10"
+                  className="mt-2"
+                />
+              </div>
+
               <Button type="submit" className="w-full btn-hero" disabled={isLoading}>
                 {isLoading ? "Posting..." : "Post Trip"}
               </Button>
@@ -312,9 +452,12 @@ const BecomeTraveler = () => {
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         {/* Traveler Info */}
                         <div className="flex items-center space-x-4">
-                          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <User className="w-8 h-8 text-primary" />
-                          </div>
+                          <Avatar className="h-16 w-16 border-2 border-primary/20 flex-shrink-0">
+                            <AvatarImage src={trip.traveler_photo_url ?? undefined} alt={trip.name || "Traveler"} />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              <User className="w-8 h-8" />
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             <h3 className="font-semibold text-lg">
                               {trip.name || trip.profiles?.first_name || "Traveler"}
@@ -353,6 +496,12 @@ const BecomeTraveler = () => {
                               <Package className="w-4 h-4" />
                               <span>{trip.space || "Space not specified"}</span>
                             </div>
+                            {trip.capacity_kg != null && (
+                              <div className="flex items-center space-x-1">
+                                <span className="font-medium">Capacity:</span>
+                                <span>{trip.capacity_kg} kg</span>
+                              </div>
+                            )}
                           </div>
                         </div>
 

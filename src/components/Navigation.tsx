@@ -42,7 +42,11 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
+    <nav className={`sticky top-0 z-50 backdrop-blur-sm border-b shadow-sm transition-colors ${
+      user 
+        ? 'bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/50' 
+        : 'bg-background/95 border-border'
+    }`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -72,12 +76,13 @@ const Navigation = () => {
 
             {user ? (
               <>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button className="btn-hero">
-                      {user.email?.split('@')[0]}
-                    </Button>
-                  </DropdownMenuTrigger>
+                <div className="rounded-lg border-2 border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 p-0.5 shadow-sm">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className="btn-hero border-0">
+                        {user.email?.split('@')[0]}
+                      </Button>
+                    </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-popover">
                     <DropdownMenuItem asChild>
                       <Link to="/sender-tracking" className="cursor-pointer">
@@ -95,6 +100,7 @@ const Navigation = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                </div>
               </>
             ) : (
                 <Link to="/login">
@@ -146,12 +152,13 @@ const Navigation = () => {
             </Link>
             <div className="pt-4 space-y-2">
               {user ? (
-                <>
+                <div className="rounded-lg border-2 border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 p-2">
+                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-2">Signed in</p>
                   <Button onClick={handleLogout} variant="outline" className="w-full">
                     <LogOut className="w-4 h-4 mr-2" />
                     Logout
                   </Button>
-                </>
+                </div>
               ) : (
                   <Link to="/login" onClick={() => setIsOpen(false)}>
                     <Button variant="outline" className="w-full">
